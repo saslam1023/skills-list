@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skill Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+  <div class="container mx-auto mt-10">
+    <h1 class="text-3xl font-bold text-center text-gray-800">Skills Bank</h1>
+    <h2 class="text-center text-gray-600 mt-2">Access a Wealth of Expertise – Search My Skills Bank</h2>
+    <p class="text-center">Quickly find the expertise you need for your project. From technical skills to creative solutions, I’ve made it easy to discover the right abilities for your project.</p>
+
+    <!-- Input Section -->
+    <div class="mt-8 flex flex-col items-center">
+      <div class="flex gap-2">
+        <input id="skillInput" type="text" placeholder="Enter a skill or activity" 
+          class="w-80 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button id="addSkillBtn" 
+          class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+          Add +
+        </button>
+   
+      <div class="mt-4">
+        <input id="searchInput" type="text" placeholder="Find skill (e.g., CSS, design)" 
+          class="w-80 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+      </div>   </div>
+    </div>
+
+    <!-- Skill Lists -->
+    <div class="mt-8 flex justify-around items-start">
+      <div id="skillListContainer" class="w-1/2 bg-white shadow-lg rounded-lg overflow-hidden">
+        <h2 class="text-xl font-bold bg-gray-200 p-4 text-gray-700">Skills List</h2>
+        <div id="skillList" class="divide-y divide-gray-200 skills-list"></div>
+      </div>
+      <div id="skillsFoundContainer" class="w-1/3 bg-white shadow-lg rounded-lg overflow-hidden">
+        <h2 class="text-xl font-bold bg-gray-200 p-4 text-gray-700">Skills Found</h2>
+        <ol id="skillsFoundList" class="list-decimal list-inside p-4 space-y-2"></ol>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const apiUrl = "http://localhost:3001/skills";
+
+    const skillInput = document.getElementById('skillInput');
+    const addSkillBtn = document.getElementById('addSkillBtn');
+    const searchInput = document.getElementById('searchInput');
+    const skillList = document.getElementById('skillList');
+    const skillsFoundList = document.getElementById('skillsFoundList');
+
+    let skills = [];
+    let foundSkills = []; // Keep track of all found skills
+
+    // Fetch skills from the server
+    function fetchSkills() {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", apiUrl, true);
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          const skillsData = JSON.parse(xhr.responseText);
+          skills = skillsData; // Save the fetched skills in the global skills array
+          renderSkills(); // Render the skills when fetched
+        }
+      };
+      xhr.send();
+    }
+
+    // Save a new skill to the server
+    function saveSkill(skill) {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", apiUrl, true);
+      xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          fetchSkills(); // Reload skills after saving
+        }
+      };
+      xhr.send(JSON.stringify(skill));
+    }
+
+    // Render skills in the "Skills List" section
+    function renderSkills() {
+      skillList.innerHTML = ''; // Clear existing list
+
+      skills.forEach((skill) => {
+        const listItem = document.createElement('li');
+        listItem.className = 'text-gray-700 flex items-center gap-2 px-4 py-1';
+        listItem.innerHTML = `
+          
+          <span>${skill.name}</span>
+        `;
+        listItem.textContent = skill.name;
+
+
+    // Add event listener to each skill for adding to found skills when clicked
+    listItem.addEventListener('click', () => {
+      if (!foundSkills.includes(skill)) {
+        foundSkills.push(skill); // Add clicked skill to the foundSkills array
+        renderFoundSkills(); // Re-render the found skills list with the new skill
+        renderSkills(); // Re-render the skills list to apply highlighting
+      }
+    });
+
+    // Only highlight skills that match the search query
+    if (isSkillHighlighted(skill.name)) {
+      listItem.classList.add('bg-yellow-200'); // Add highlight color
+    }
+
+    skillList.appendChild(listItem);
+  });
+}
+
+    // Check if the skill should be highlighted (only when searched)
+    function isSkillHighlighted(skillName) {
+      const query = searchInput.value.trim().toLowerCase();
+      const queries = query.split(',').map(item => item.trim());
+
+      // If no query, don't highlight any skill
+      if (!query) return false;
+
+      // Check if the skill matches any of the search queries
+      return queries.some(querySkill => skillName.toLowerCase().includes(querySkill.toLowerCase()));
+    }
+
+    // Render the "Skills Found" list with checkmarks
+    function renderFoundSkills() {
+      skillsFoundList.innerHTML = ""; // Clear the found skills list
+
+      foundSkills.forEach((skill) => {
+        const skillItem = document.createElement("li");
+        skillItem.className = 'text-gray-700 flex items-center gap-2';
+        skillItem.innerHTML = `
+          <span class="text-green-500">&#10003;</span>
+          <span>${skill.name}</span>
+        `;
+
+        skillsFoundList.appendChild(skillItem);
+      });
+    }
+
+    // Add a skill
+    addSkillBtn.addEventListener("click", () => {
+      const skillName = skillInput.value.trim();
+      if (skillName) {
+        saveSkill({ name: skillName });
+        skillInput.value = ""; // Clear input
+      }
+    });
+
+    // Search for skills (split multiple queries by commas and handle each one)
+    searchInput.addEventListener("input", () => {
+      const query = searchInput.value.trim().toLowerCase();
+
+      // Split the search query by commas and process each skill individually
+      const queries = query.split(',').map(item => item.trim());
+
+      // For each query, check if it exists in the skills list
+      queries.forEach(querySkill => {
+        const foundSkill = skills.find(skill => skill.name.toLowerCase().includes(querySkill.toLowerCase()));
+        
+        if (foundSkill && !foundSkills.some(skill => skill.name === foundSkill.name)) {
+          // Add the found skill to the foundSkills list if it's not already there
+          foundSkills.push(foundSkill);
+        }
+      });
+
+      renderFoundSkills(); // Update the "Skills Found" list with checkmarks
+      renderSkills(); // Re-render the skills list to apply highlighting
+    });
+
+    // Initial fetch
+    fetchSkills();
+
+  </script>
+</body>
+</html>
